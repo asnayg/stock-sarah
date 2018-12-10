@@ -1,0 +1,10 @@
+
+{% if productos_list %}
+    <ul>
+    {% for prod in productos_list %}
+       <li><a href="{% url 'appStock:detail' prod.id %}">{{ prod.nombre }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No hay productos disponibles.</p>
+{% endif %}

@@ -4,19 +4,20 @@ import datetime
 # Create your models here.
 
 class Producto(models.Model):
-    ESTADOS = (
-        ('S', 'Stock'),
-        ('B', 'BackUp'),
-        ('U', 'En USO'),
+    CATEGORIAS = (
+        ('A', 'Redes'),
+        ('B', 'TV'),
+        ('C', 'Insumo'),
     )
-    identificador = models.CharField(max_length=200, unique=True )
+    identificador = models.CharField(max_length=200, unique=True)
+    nombre = models.CharField(max_length=100)
     marca = models.CharField(max_length=100)
     modelo = models.CharField(max_length=200)
-    estado = models.CharField(max_length=1, choices=ESTADOS)
-    ubicacion = models.CharField(max_length=200, default="Deposito")
     observacion = models.TextField(blank=True)
-    fecha_actualizacion = models.DateField(editable=False, default=datetime.date.today)
+    fecha_entrada = models.DateField(editable=False, default=datetime.date.today)
     cantidad = models.PositiveIntegerField(editable=False, default=0)
+    categoria = models.CharField(max_length=1, choices=CATEGORIAS, default='S')
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
         return self.identificador
@@ -26,7 +27,7 @@ class Producto(models.Model):
         super().save()
 
     class Meta:
-        ordering = ["fecha_actualizacion"]
+        ordering = ["fecha_entrada"]
         verbose_name_plural = "Productos"
 
 
@@ -50,7 +51,7 @@ class OrdenEntrada(Orden):
     def __str__(self):
         return "Orden Entrada"
 
-    def  updateCantidadProducto(self):
+    def updateCantidadProducto(self):
         self.producto.actualizarCantidad(self.cantidad_producto)
 
     def save(self, *args, **kwargs):
@@ -61,19 +62,25 @@ class OrdenEntrada(Orden):
        verbose_name_plural = "Ordenes de Entrada"
 
 
+class Cliente(models.Model):
+    ubicacion = models.CharField(max_length=100, unique=True)
+    descripcion = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.ubicacion
+
+    class Meta:
+       verbose_name_plural = "Clientes Destinos"
+
+
 class OrdenSalida(Orden):
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
-    ORDEN_ESTADOS = (
-        ('A', 'Activa'),
-        ('C', 'Cerrada'),
-        ('M', 'Modificada'),
-    )
-    estado = models.CharField(max_length=1, choices=ORDEN_ESTADOS)
+    cliente_destino = models.ForeignKey(Cliente, on_delete=models.PROTECT)
 
     def __str__(self):
         return self.numero
 
-    def  updateCantidadProducto(self):
+    def updateCantidadProducto(self):
         self.producto.actualizarCantidad((self.cantidad_producto * -1))
 
     def save(self, *args, **kwargs):
@@ -85,13 +92,14 @@ class OrdenSalida(Orden):
 
 
 class OrdenDevolucion(Orden):
-    orden_salida = models.ForeignKey(OrdenSalida, verbose_name="Orden de Salida", on_delete=models.PROTECT) #.SET_DEFAULT
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
+    cliente_destino = models.ForeignKey(Cliente, on_delete=models.PROTECT)
 
     def __str__(self):
         return self.numero
 
-    def  updateCantidadProducto(self):
-        self.orden_salida.producto.actualizarCantidad(self.cantidad_producto)
+    def updateCantidadProducto(self):
+        self.producto.actualizarCantidad(self.cantidad_producto)
 
     def save(self, *args, **kwargs):
         self.updateCantidadProducto()
@@ -99,3 +107,15 @@ class OrdenDevolucion(Orden):
 
     class Meta:
        verbose_name_plural = "Ordenes de Devolucion"
+
+
+class StockCliente(models.Model):
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
+    cliente_destino = models.ForeignKey(Cliente, on_delete=models.PROTECT)
+    cantidad = models.PositiveIntegerField(editable=False, default=0)
+
+    def __str__(self):
+        return "Stock Cliente"
+
+    class Meta:
+       verbose_name_plural = "Stock en Clientes"

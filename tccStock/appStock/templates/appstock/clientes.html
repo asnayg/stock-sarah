@@ -1,0 +1,10 @@
+
+{% if clientes_list %}
+    <ul>
+    {% for cl in clientes_list %}
+       <li><a href="{% url 'appStock:detail' cl.id %}">{{ cl.ubicacion }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No hay datos disponibles.</p>
+{% endif %}

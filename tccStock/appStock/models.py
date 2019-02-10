@@ -20,7 +20,7 @@ class Producto(models.Model):
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
-        return self.identificador
+        return self.identificador + " - " + self.nombre
 
     def actualizarCantidad(self, cant):
         self.cantidad += cant
@@ -62,6 +62,7 @@ class OrdenEntrada(Orden):
        verbose_name_plural = "Ordenes de Entrada"
 
 
+
 class Cliente(models.Model):
     ubicacion = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(blank=True)
@@ -83,8 +84,18 @@ class OrdenSalida(Orden):
     def updateCantidadProducto(self):
         self.producto.actualizarCantidad((self.cantidad_producto * -1))
 
+    def actualizarStockCliente(self):
+        try:
+            sc = StockCliente.objects.get(producto=self.producto, cliente_destino=self.cliente_destino)
+            sc.cantidad += self.cantidad_producto
+            sc.save()
+        except StockCliente.DoesNotExist:
+            sc = StockCliente(producto=self.producto, cliente_destino=self.cliente_destino, cantidad=self.cantidad_producto)
+            sc.save()
+
     def save(self, *args, **kwargs):
         self.updateCantidadProducto()
+        self.actualizarStockCliente()
         super().save(*args, **kwargs)
 
     class Meta:
@@ -93,7 +104,7 @@ class OrdenSalida(Orden):
 
 class OrdenDevolucion(Orden):
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
-    cliente_destino = models.ForeignKey(Cliente, on_delete=models.PROTECT)
+    cliente_origen = models.ForeignKey(Cliente, on_delete=models.PROTECT)
 
     def __str__(self):
         return self.numero
@@ -101,8 +112,18 @@ class OrdenDevolucion(Orden):
     def updateCantidadProducto(self):
         self.producto.actualizarCantidad(self.cantidad_producto)
 
+    def actualizarStockCliente(self):
+        try:
+            sc = StockCliente.objects.get(producto=self.producto, cliente_destino=self.cliente_destino)
+            sc.cantidad -= self.cantidad_producto
+            sc.save()
+        except StockCliente.DoesNotExist:
+            sc = StockCliente(producto=self.producto, cliente_destino=self.cliente_destino, cantidad=self.cantidad_producto)
+            sc.save()
+
     def save(self, *args, **kwargs):
         self.updateCantidadProducto()
+        self.actualizarStockCliente()
         super().save(*args, **kwargs)
 
     class Meta:
